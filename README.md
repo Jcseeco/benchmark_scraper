@@ -1,8 +1,8 @@
 # Set up
 
-"""bash
+```bash
 pip install selenium webdriver_manager pandas
-"""
+```
 
 # How to use
 
