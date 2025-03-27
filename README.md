@@ -15,4 +15,5 @@ Output is a json file in the output directory and the output structure depends o
 
 # Feature logs
 
-1. Extract play-by-play script of a mlb game from ESPN. `"input"`: play-by-play script, `"output"`: the scoreboard
+- [x] Extract play-by-play script of a mlb game from ESPN. `"input"`: play-by-play script, `"output"`: the scoreboard
+- [] Extract play-by-play script of a mlb game from ESPN. `"input"`: play-by-play script, `"output"`: the boxscores
