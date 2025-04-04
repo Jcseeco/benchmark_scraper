@@ -11,7 +11,25 @@ import pandas as pd
 OUTPUT_DIR = "./outputs"
 GAMEID_FILE = "gameIds.csv"
 
-def MLB_play_by_play(url):
+def append_json(file_name:str, data:list):
+    try:
+        with open(path.join(OUTPUT_DIR,file_name), "r") as file:
+            new_data = json.load(file)  # Load existing content
+            if isinstance(new_data, list):
+                new_data.extend(data)  # Append to list
+            else:
+                new_data = [new_data, data]  # Convert to list if not already
+    
+    except (json.JSONDecodeError,FileNotFoundError):
+        # If the file is empty, invalid, or doesn't exist, start with a new list
+        new_data = data
+        
+    with open(path.join(OUTPUT_DIR,file_name), "w") as file:
+        json.dump(new_data,file,indent=4)        
+        
+
+def MLB_play_by_play(game_id):
+    play_url = "https://www.espn.com/mlb/playbyplay/_/gameId/" + game_id
     play_class_name = "PlayHeader__description"
     
     # Set up the Selenium WebDriver
@@ -21,8 +39,8 @@ def MLB_play_by_play(url):
     driver = webdriver.Chrome(service=service,options=options)
     
     try:
-        driver.get(url)
-        time.sleep(3)  # Wait for the page to load (adjust as needed)
+        driver.get(play_url)
+        time.sleep(2)  # Wait for the page to load (adjust as needed)
         
         # Find elements by class name
         divs = driver.find_elements(By.CLASS_NAME, play_class_name)
@@ -43,6 +61,8 @@ def MLB_play_by_play(url):
         
     finally:
         driver.quit()
+def mlb_line_score(url):
+    raise NotImplementedError
 
 def mlb_play_n_score():
     """ 
@@ -57,41 +77,23 @@ def mlb_play_n_score():
     
     # read game ids and prepend url
     df = pd.read_csv(GAMEID_FILE,dtype={"gameIds":"str"})
-    df["gameIds"] = "https://www.espn.com/mlb/playbyplay/_/gameId/" + df["gameIds"]
-    
-    urls = df["gameIds"].tolist()
-    print(f"extracting from {len(urls)} mlb games.")
+    game_ids = df["gameIds"].tolist()
+    print(f"extracting from {len(game_ids)} mlb games.")
     
     # create output directory if not exists 
     makedirs(OUTPUT_DIR ,exist_ok=True)
     
     # scrape data
     new_data = []
-    for url in urls:
-        transcript = MLB_play_by_play(url)
+    for game_id in game_ids:
+        transcript = MLB_play_by_play(game_id)
         new_data.append({
-            "url": url,
+            "game_id": game_id,
             "input": transcript
         })
     
     # write to output file
-    with open(path.join(OUTPUT_DIR,out_file), "r+") as file:
-        try:
-            data = json.load(file)  # Load existing content
-            if isinstance(data, list):
-                data.extend(new_data)  # Append to list
-            else:
-                data = [data, new_data]  # Convert to list if not already
-        except json.JSONDecodeError:
-            # If the file is empty or invalid, start with a new list
-            data = new_data
-        except Exception as e:
-            print(f"Error while reading output file: {e}")
-            
-        
-        file.seek(0)
-        json.dump(data,file,indent=4)
-        file.truncate()
+    append_json(out_file,new_data)
     
 
 if __name__ == "__main__":
