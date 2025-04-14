@@ -117,7 +117,7 @@ def mlb_play_n_score():
         new_data.append({
             "game_id": game_id,
             "input": transcript,
-            "output": line_score
+            "ground": line_score
         })
     
     driver.close()
