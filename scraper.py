@@ -72,7 +72,7 @@ def mlb_line_score(driver, game_id):
     
     score_table = driver.find_element(By.CSS_SELECTOR,"div.LineScore div.Table__ScrollerWrapper table")
     team1_scores = score_table.find_elements(By.CSS_SELECTOR,"tbody tr:nth-child(1) td:nth-of-type(-n+9)")
-    team2_scores = score_table.find_elements(By.CSS_SELECTOR,"tbody tr:nth-child(1) td:nth-of-type(-n+9)")
+    team2_scores = score_table.find_elements(By.CSS_SELECTOR,"tbody tr:nth-child(2) td:nth-of-type(-n+9)")
     
     md_table = "| Team | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |\n| - | - | - | - | - | - | - | - | - | - |\n"
     team1_row = f"| {team1} | "
