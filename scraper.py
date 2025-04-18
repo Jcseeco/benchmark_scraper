@@ -12,6 +12,33 @@ from functools import reduce
 OUTPUT_DIR = "./outputs"
 GAMEID_FILE = "gameIds.csv"
 
+def wait_el_text(driver,url: str, selector: By, el_path: str, interval: float = 2, timeout: float= 10):
+    """Returns element text content when it is loaded, 
+    this ensures desired content is loaded and ready for extraction.
+
+    Args:
+        driver (_type_): web driver
+        url (str): url to get
+        selector (By): selector used for driver.find_element
+        el_path (str): path to the element to wait on
+        interval (float): interval to retry getting the text of element
+        timeout (float): max time for waiting the element
+        
+    Raises:
+        TimeoutError: if element text not loaded after sepcified timeout
+    """
+    time_passed = 0
+    
+    while time_passed < timeout:
+        el = driver.find_element(selector,el_path)
+        if el.text != "":
+            return el.text
+        
+        time.sleep(interval)
+        time_passed += interval
+        
+    raise TimeoutError(f"Timeout while waiting element at: {el_path} to load")
+
 def append_json(file_name:str, data:list):
     try:
         with open(path.join(OUTPUT_DIR,file_name), "r") as file:
@@ -56,14 +83,17 @@ def MLB_play_by_play(driver, game_id):
             
     return joined_text
         
-def mlb_line_score(driver, game_id):
+def mlb_line_score(driver, game_id, load_url: bool = False):
     """returns line score table in markdown format
     """
     print(f"extracting linescore: {game_id}")
     play_url = "https://www.espn.com/mlb/playbyplay/_/gameId/" + game_id
     
-    driver.get(play_url)
-    time.sleep(2)  # Wait for the page to load (adjust as needed)
+    if load_url:
+        driver.get(play_url)
+        
+    # waits all scores to be loaded
+    wait_el_text(driver,By.CSS_SELECTOR, "div.LineScore div.Table__ScrollerWrapper table tbody tr:nth-child(2) td:nth-of-type(9)")
     
     # Find elements by class name
     team_table = driver.find_element(By.CSS_SELECTOR, "div.LineScore table:first-of-type")
