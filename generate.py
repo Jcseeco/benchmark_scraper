@@ -10,7 +10,7 @@ load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI()
 
-def prompt_gemeni(input:str)->str:
+def prompt_gemini(input:str)->str:
     client = genai.Client(
         api_key=os.environ.get("GEMINI_API_KEY"),
     )
@@ -45,23 +45,23 @@ def prompt_4o_mini(input:str)->str:
 
 def get_model_func()->Callable[[str],str]:
     model = input("select model:\n"
-          "1. GPT-4o mini\n"
-          "2. Gemini\n")
+          "1. Gemini\n"
+          "2. GPT-4o mini\n")
     
     if model not in ["1","2"]:
         print("incorrect input\n")
         return get_model_func()
     
     if model == "1":
-        return prompt_4o_mini
+        return prompt_gemini
     else:
-        return prompt_gemeni
+        return prompt_4o_mini
 
 
 def generate_line_scores(filepath:str):
     prompt_model_func = get_model_func()
     
-    prompt = "Generate only a table with line score of each team according to the following MLB play-by-play script:\n"
+    prompt = "Generate only a table with line score from 1 through 9 inning of each team according to the following MLB play-by-play script:\n"
     
     with open(filepath,"r") as file:
         games = json.load(file)
