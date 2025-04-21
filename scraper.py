@@ -12,7 +12,7 @@ from functools import reduce
 OUTPUT_DIR = "./outputs"
 GAMEID_FILE = "gameIds.csv"
 
-def wait_el_text(driver,url: str, selector: By, el_path: str, interval: float = 2, timeout: float= 10):
+def wait_el_text(driver, selector: By, el_path: str, interval: float = 2, timeout: float= 10):
     """Returns element text content when it is loaded, 
     this ensures desired content is loaded and ready for extraction.
 
@@ -160,7 +160,7 @@ if __name__ == "__main__":
 
     func_code = input("select func:\n"
           "1. MLB play-by-play and linescore\n"
-          "2. MLB play-by-play and boxscore\n")
+          "2. NHL recap article\n")
     
     if func_code == "1":
         mlb_play_n_score()
