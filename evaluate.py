@@ -68,10 +68,7 @@ def parse_line_score_table(s:str)->list[dict[str,int]]:
         
     return line_score
 
-def evaluate_line_score(game:dict):
-    table_ground = parse_line_score_table(game["ground"])
-    table_output = parse_line_score_table(game["output"])
-    
+def evaluate_line_score_rmse(table_ground: list[dict[str, int]], table_output: list[dict[str, int]]):    
     # calculate RMSE
     sum = 0
     for i in range(9):
@@ -82,18 +79,45 @@ def evaluate_line_score(game:dict):
             sum += pow(y-y_bar,2)
             
     rsme = math.sqrt(sum / 18)
-    return rsme, table_ground, table_output
+    return rsme
             
+def evaluate_line_score_acc(table_ground: list[dict[str, int]], table_output: list[dict[str, int]])->float:
+    # calculate accuracy
+    correct = 0
+    for i in range(9):
+        for team in table_ground[i]:
+            y_bar = table_output[i][team]
+            y = table_ground[i][team]
+            
+            if y_bar == y:
+                correct += 1
+                
+    return correct/18   # out of 18 cells
 
 def evaluate_file(filepath):
-    
+    rmse_list = []
+    acc_list = []
     with open(filepath,"r") as file:
         data = json.load(file)
         
         for game in data:
-            rmse,table_ground,_ = evaluate_line_score(game)
-            teams = " vs ".join(table_ground[0].keys())
-            print(f"gameID <{game['game_id']}> {teams}, RMSE: {rmse:.3f}")
+            table_ground = parse_line_score_table(game["ground"])
+            table_output = parse_line_score_table(game["output"])
+            
+            rmse = evaluate_line_score_rmse(table_ground,table_output)
+            rmse_list.append(rmse)
+            
+            acc = evaluate_line_score_acc(table_ground,table_output)
+            acc_list.append(acc)
+            
+            teams = " vs ".join(table_ground[0].keys()) # game info
+            print(f"gameID <{game['game_id']}> {teams}, RMSE: {rmse:.4f}, ACC: {acc:.4f}")
+            
+    avg_rmse = sum(rmse_list)/len(rmse_list)
+    avg_acc = sum(acc_list)/len(acc_list)
+    print(f"Evaluated {len(data)} games:")
+    print(f"avg rmse: {avg_rmse:.4f}, min: {min(rmse_list):.4f}, max: {max(rmse_list):.4f}")
+    print(f"avg accuracy: {avg_acc:.4f}, min: {min(acc_list):.4f}, max: {max(acc_list):.4f}")
 
 
 if __name__ == "__main__":
