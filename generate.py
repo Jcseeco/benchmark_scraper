@@ -5,6 +5,7 @@ import json
 from google import genai
 from google.genai import types
 from typing import Callable
+import time
 
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -26,6 +27,7 @@ def prompt_gemini(input:str)->str:
     ]
     generate_content_config = types.GenerateContentConfig(
         response_mime_type="text/plain",
+        system_instruction="only generate the table as response"
     )
 
     response = client.models.generate_content(
@@ -57,9 +59,32 @@ def get_model_func()->Callable[[str],str]:
     else:
         return prompt_4o_mini
 
+def append_output(filepath: str, data: str):
+    with open(filepath,"a") as file:
+        json.dump(data,file)
+        file.write("\n")
+
+def merge_temp_output(origin_path: str, temp_path: str, out_path: str, delete_temp:bool = True):
+    with open(temp_path,"r") as file:
+        outputs = file.readlines()
+    
+    # copy output to game object
+    with open(origin_path,"r") as origin_file:
+        games = json.load(origin_file)
+        for i in range(len(games)):
+            games[i]["output"] = outputs[i]
+        
+    with open(out_path, "w") as file:
+        json.dump(games, file, indent=4)
+        
+    if delete_temp:
+        os.remove(temp_path)
+        
 
 def generate_line_scores(filepath:str):
     prompt_model_func = get_model_func()
+    path_with_output = os.path.splitext(filepath)[0] + "_output.json"
+    temp_output_path = os.path.splitext(filepath)[0] + "_output.txt.temp"
     
     prompt = "Generate only a table with line score from 1 through 9 inning of each team according to the following MLB play-by-play script:\n"
     
@@ -68,12 +93,11 @@ def generate_line_scores(filepath:str):
         for game in games:
             input_text = prompt + game["input"]
             output = prompt_model_func(input_text)
-            game["output"] = output
+            append_output(temp_output_path, output)
             
-    # write data with outputs from models into a new file
-    path_with_output = os.path.splitext(filepath)[0] + "_output.json"
-    with open(path_with_output,"w") as file:
-        json.dump(games,file,indent=4)  
+            time.sleep(4.5)   # limit request rate to meet free quota
+            
+    merge_temp_output(filepath,temp_output_path,path_with_output)
             
             
 if __name__ == "__main__":
