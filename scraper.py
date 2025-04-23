@@ -1,4 +1,5 @@
 from selenium import webdriver
+from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
@@ -154,17 +155,84 @@ def mlb_play_n_score():
     
     # write to output file
     append_json(out_file,new_data)
+
+def mlb_pitcher_box(driver: WebDriver, game_id, load_url: bool = False) -> str:
+    print(f"extracting pitcher boxscore: {game_id}")
+    play_url = "https://www.espn.com/mlb/boxscore/_/gameId/" + game_id
     
+    if load_url:
+        driver.get(play_url)
+        
+    # waits all data to be loaded
+    wait_el_text(driver,By.CSS_SELECTOR, ".Boxscore__Category:nth-child(2) .Boxscore__Team:nth-child(2) .Table__Scroller tbody td:last-child")
+    
+    pitchers = driver.find_elements(By.CSS_SELECTOR,".Boxscore__Category:nth-child(2) .Boxscore__Team .Boxscore__Athlete_Name")
+    values = driver.find_elements(By.CSS_SELECTOR, ".Boxscore__Category:nth-child(2) .Boxscore__Team .Table__Scroller tbody tr:not(.Boxscore__Totals) td")
+    
+    # value headers: IP, H, R, ER, BB, K, HR, PC-ST, ERA
+    # exclude ER, PC-ST, and ERA
+    exclude_i = [3,7,8]
+    md_table = "| Pitcher | IP | H | R | BB | K | HR | \n | - | - | - | - | - | - | - | \n "
+    for p in range(len(pitchers)):
+        pitcher = pitchers[p].text.strip()
+        md_table += "| " + pitcher + " | "
+        
+        for i in range(9):
+            if i in exclude_i:
+                continue
+            
+            val = values[i + p*9].text.strip()
+            md_table += val + " | "
+            
+        md_table += "\n "
+        
+    return md_table
+
+def mlb_play_pitcher_box():
+    print(f"make sure gameIds is at `{path.join(GAMEID_FILE)}`")
+    out_file = input("press enter for a new output file name or type in the output file to append to: ")
+    if not out_file:
+        out_file = "mlb_play_pitcher_box_"+datetime.datetime.now().strftime("%H%M%S")+ ".json"
+    
+    # read game ids and prepend url
+    df = pd.read_csv(GAMEID_FILE,dtype={"gameIds":"str"})
+    game_ids = df["gameIds"].tolist()
+    print(f"extracting from {len(game_ids)} mlb games.")
+    
+    # create output directory if not exists 
+    makedirs(OUTPUT_DIR ,exist_ok=True)
+    
+    # Set up the Selenium WebDriver
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless")  # Run without opening a browser
+    options.add_argument("window-size=1920,1080")   # for consistent layout
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service,options=options)
+    
+    new_data = []
+    for game_id in game_ids:
+        transcript = MLB_play_by_play(driver, game_id)
+        boxscore = mlb_pitcher_box(driver,game_id,True)
+        new_data.append({
+            "game_id": game_id,
+            "input": transcript,
+            "ground": boxscore
+        })
+    
+    driver.close()
+    
+    # write to output file
+    append_json(out_file,new_data)
 
 if __name__ == "__main__":
 
     func_code = input("select func:\n"
           "1. MLB play-by-play and linescore\n"
-          "2. NHL recap article\n")
+          "2. MLB play-by-play and pitchers boxscore\n")
     
     if func_code == "1":
         mlb_play_n_score()
-    elif func_code == 2:
-        raise NotImplementedError
+    elif func_code == "2":
+        mlb_play_pitcher_box()
     
     

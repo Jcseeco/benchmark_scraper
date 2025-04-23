@@ -94,7 +94,28 @@ def evaluate_line_score_acc(table_ground: list[dict[str, int]], table_output: li
                 
     return correct/18   # out of 18 cells
 
+def evaluate_pitcher_box_rmse(table_ground: list[dict[str, int]], table_output: list[dict[str, int]])->float:
+    raise NotImplemented
+
+def evaluate_pitcher_box_acc(table_ground: list[dict[str, int]], table_output: list[dict[str, int]])->float:
+    raise NotImplemented
+
+def get_eval_functions():
+    option = input("select evaluation option:\n"
+                   "1. line score\n"
+                   "2. pitchers boxscore")
+    
+    if option == "1":
+        return evaluate_line_score_rmse, evaluate_line_score_acc
+    elif option == "2":
+        return evaluate_line_score_rmse, evaluate_line_score_acc
+    else:
+        print("please select valid option")
+        return get_eval_functions()
+
 def evaluate_file(filepath):
+    eval_rmse,eval_acc = get_eval_functions()
+    
     rmse_list = []
     acc_list = []
     with open(filepath,"r") as file:
@@ -104,10 +125,10 @@ def evaluate_file(filepath):
             table_ground = parse_line_score_table(game["ground"])
             table_output = parse_line_score_table(game["output"])
             
-            rmse = evaluate_line_score_rmse(table_ground,table_output)
+            rmse = eval_rmse(table_ground,table_output)
             rmse_list.append(rmse)
             
-            acc = evaluate_line_score_acc(table_ground,table_output)
+            acc = eval_acc(table_ground,table_output)
             acc_list.append(acc)
             
             teams = " vs ".join(table_ground[0].keys()) # game info
