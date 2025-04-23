@@ -4,7 +4,7 @@ from table_class import LineScore, PitcherBoxscore
 def get_table_class():
     option = input("select evaluation option:\n"
                    "1. line score\n"
-                   "2. pitchers boxscore")
+                   "2. pitchers boxscore\n")
     
     if option == "1":
         return LineScore
