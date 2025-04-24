@@ -79,57 +79,60 @@ def merge_temp_output(origin_path: str, temp_path: str, out_path: str, delete_te
         
     if delete_temp:
         os.remove(temp_path)
-        
 
-def generate_line_scores(filepath:str):
-    prompt_model_func = get_model_func()
-    path_with_output = os.path.splitext(filepath)[0] + "_output.json"
-    temp_output_path = os.path.splitext(filepath)[0] + "_output.txt.temp"
+def generate_gemini(in_file_path, prompt, instructions, start_id:str = ""):
+    path_with_output = os.path.splitext(in_file_path)[0] + "_output.json"
     
-    prompt = "Generate only a table with line score from 1 through 9 inning of each team according to the following MLB play-by-play script:\n"
-    
-    with open(filepath,"r") as file:
-        games = json.load(file)
-        for game in games:
-            input_text = prompt + game["input"]
-            output = prompt_model_func(input_text)
-            append_output(temp_output_path, output)
-            
-            time.sleep(4.5)   # limit request rate to meet free quota
-            
-    merge_temp_output(filepath,temp_output_path,path_with_output)
-            
-def generate_pitcher_box_score(filepath:str):
-    path_with_output = os.path.splitext(filepath)[0] + "_output.json"
-    
-    prompt = "According to the following MLB play-by-play script, generate a table of stats including Innings pitched, Hits, Runs, Walks, Strike outs, and Home runs of each pitcher for both teams:\n"
-    instructions = ("The header of the final generated table should be in the format of \n "
-                    "| Pitcher | IP | H | R | BB | K | HR | \n | - | - | - | - | - | - | - | \n "
-                    "Where IP is innings pitched, H is hits, R is runs, BB is walks, K is strike outs, and HR is home runs.")
-    
-    in_file = open(filepath,"r")
+    in_file = open(in_file_path,"r")
     games = json.load(in_file)
     in_file.close()
     
+    if start_id =="":
+        starts = True
+    else:
+        starts = False
+        
     for game in games:
-        input_text = prompt + game["input"]
+        # skip until given game id to generate
+        if game['game_id'] == start_id:
+            starts = True
+        if not starts:
+            continue
+        
         print(f"generating for game: {game['game_id']}")
+        input_text = prompt + game["input"]
         try:
             output = prompt_gemini(input_text,instructions)
             game["output"] = output
         # write current progress to file if error
         except Exception as e:
-            print(e)
+            print(f"Error while generating, {e}")
             with open(path_with_output, "w") as out_file:
                 json.dump(games,out_file,indent=4)
                 
             break
         
         time.sleep(4.5)   # limit request rate to meet free quota
-        
-    # write final result
+            
     with open(path_with_output, "w") as out_file:
         json.dump(games,out_file,indent=4)
+
+def generate_line_scores(filepath:str):    
+    prompt = "Generate a table with line score from 1 through 9 inning of each team according to the following MLB play-by-play script:\n"
+    instructions = ("The header of the final generated table should be in the format of \n "
+                    "| Team | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |\n| - | - | - | - | - | - | - | - | - | - |\n"
+                    "and team names should be identical to that in the play-by-play script. "
+                    "Use the '-' character for innings that were not played because the game ended early")
+    
+    generate_gemini(filepath,prompt,instructions)
+            
+def generate_pitcher_box_score(filepath:str):
+    prompt = "According to the following MLB play-by-play script, generate a table of stats including Innings pitched, Hits, Runs, Walks, Strike outs, and Home runs of each pitcher for both teams:\n"
+    instructions = ("The header of the final generated table should be in the format of \n "
+                    "| Pitcher | IP | H | R | BB | K | HR | \n | - | - | - | - | - | - | - | \n "
+                    "Where IP is innings pitched, H is hits, R is runs, BB is walks, K is strike outs, and HR is home runs.")
+    
+    generate_gemini(filepath,prompt,instructions)
 
 if __name__ == "__main__":
 
