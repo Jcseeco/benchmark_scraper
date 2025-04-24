@@ -114,5 +114,64 @@ class LineScore(TableInterface):
     
 class PitcherBoxscore(TableInterface):
     
-    def __init__(self):
+    def __init__(self, ground_table: str, output_table: str):
         super().__init__()
+        self.ground = self.parse_table(ground_table)
+        self.output = self.parse_table(output_table)
+        
+    def parse_table(self, s:str)->list[dict[str,int]]:
+        s = s.strip()
+        s = self.parse_header(s)
+        pitcher_stats = self.parse_pitcher_stats(s)
+            
+        return pitcher_stats
+    
+    def parse_header(self, s: str):
+        """remove header and divider
+        """
+        header = r"\|\s*Pitcher\s*\|\s*IP\s*\|\s*H\s*\|\s*R\s*\|\s*BB\s*\|\s*K\s*\|\s*HR\s*\|\s*\n\s*\|\s*-\s*\|\s*-\s*\|\s*-\s*\|\s*-\s*\|\s*-\s*\|\s*-\s*\|\s*-\s*\|"
+        
+        return re.sub(header,'',s,count=1)
+    
+    def parse_pitcher_stats(self, s: str) -> dict[str, list[int]]:
+        pitcher_pattern = r"\b((?:[A-Z]\.)+\s[A-Za-z]+)+\b"
+        pitchers = re.findall(pitcher_pattern,s)
+        
+        # get all stats
+        stats_pattern = r".*?\s*([0-9]+\.*[0-9]*)\s*\|"
+        stats = re.findall(stats_pattern,s)
+        
+        pitcher_stats = {}
+        # list stats for each pitcher
+        # pitcher names are converted to upper case for consistency
+        for p in range(len(pitchers)):
+            pitcher_stats[pitchers[p].upper()] = [float(stats[i+p*6]) for i in range(6)]
+            
+        return pitcher_stats
+    
+    def eval_rmse(self) -> float:
+        sum = 0
+        
+        for pitcher in self.ground:
+            for i in range(len(self.ground[pitcher])):
+                y = self.ground[pitcher][i]
+                y_bar = self.output[pitcher][i]
+                
+                sum += pow(y-y_bar,2)
+        
+        rsme = math.sqrt(sum / 18)
+        return rsme
+    
+    def eval_acc(self) -> float:
+        correct = 0
+        total = len(self.ground.keys()) * 6     # 6 stats for each pitcher
+        
+        for pitcher in self.ground:
+            for i in range(len(self.ground[pitcher])):
+                y = self.ground[pitcher][i]
+                y_bar = self.output[pitcher][i]
+                
+                if y_bar == y:
+                    correct += 1
+                    
+        return correct/total
