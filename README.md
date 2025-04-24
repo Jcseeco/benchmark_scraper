@@ -25,6 +25,7 @@ Output is a json file in the same directory as the input file path. It includes 
 
 # Feature logs
 
-- [x] Extract play-by-play script of a mlb game from ESPN. `"input"`: play-by-play script, `"output"`: the scoreboard
+- [x] Extract play-by-play script of a mlb game from ESPN. `"input"`: play-by-play script, `"ground"`: the scoreboard
 - [x] Generate linescore table by feeding play-by-play and a prompt to LLM models.
-- [ ] Extract play-by-play script of a mlb game from ESPN. `"input"`: play-by-play script, `"output"`: the boxscores
+- [x] Extract play-by-play script of a mlb game from ESPN. `"input"`: play-by-play script, `"ground"`: the pitchers' boxscore from both teams as single table
+- [x] Generate boxscore table by feeding play-by-play and a prompt to LLM models.
