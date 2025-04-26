@@ -144,13 +144,25 @@ def generate_batter_box_score(filepath: str):
     generate_gemini(filepath, prompt, instructions)
 
 def generate_line_scores_solution(filepath: str):
-    prompt = ("According the following MLB play-by-play script, generate the resoning with the exact sentence from the script for each scored run starting from the first inning, then generate a table with line score from 1 through 9 inning of each team by adding the scores from the reasoning:\n")
-    instructions = ("The header of the final generated table should be in the format of \n "
-                    "| Team | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |\n| - | - | - | - | - | - | - | - | - | - |\n"
-                    "and team names should be identical to that in the play-by-play script. "
-                    "Use the '-' character for innings that were not played because the game ended early"
-                    "Read carefully each sentence and understand which attribute/statistic contribute to score."
-                    "Identify which team is on the offence in each inning")
+    prompt = """According to the following MLB play-by-play script, provide the reasoning by following the steps, then generate a table of line score of each team from the reasoning.
+
+Reasoning:
+Process sentence by sentence:
+1. inning = 1 top
+2. current pitcher = the pitcher in "<Pitcher> PITCHING FOR <TEAM>."
+3. current defending team = the TEAM "<Pitcher> PITCHING FOR <TEAM>."
+4. current offensing team = the other team
+4. if sentence is "<Pitcher> PITCHING FOR <TEAM>." and TEAM is not equal to current defending team, then change inning, and make current offensing team = current defending team, current defending team  = TEAM.
+5. runs[top ot bottom][inning] = number of scored runs.
+6. list all innings and the attribute values in each inning.
+
+Play-by-play:
+"""
+    instructions = """The header of the final generated table should be in the format of
+| Team | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
+| - | - | - | - | - | - | - | - | - | - |
+where cell values are "runs[top or bottom][inning]"."""
+    
     generate_gemini(filepath, prompt, instructions)
 
 if __name__ == "__main__":
