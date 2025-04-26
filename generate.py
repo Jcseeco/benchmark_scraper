@@ -134,6 +134,15 @@ def generate_pitcher_box_score(filepath:str):
     
     generate_gemini(filepath,prompt,instructions)
 
+def generate_batter_box_score(filepath: str):
+    prompt = ("According to the following MLB play-by-play script, generate a table of batting stats for each player including At-Bats (AB), Runs (R), Hits (H), Runs Batted In (RBI), "
+              "Home Runs (HR), Walks (BB), Strikeouts (K), Batting Average (AVG), On-Base Percentage (OBP), and Slugging Percentage (SLG):\n")
+    instructions = ("Header format:\n"
+                    "| Team | Player | Pos | AB | R | H | RBI | HR | BB | K | AVG | OBP | SLG |\n"
+                    "| - | - | - | - | - | - | - | - | - | - | - | - | - |\n"
+                    "Use team and player names exactly from the script. Estimate stats if needed, but do not invent players.")
+    generate_gemini(filepath, prompt, instructions)
+
 if __name__ == "__main__":
 
     filepath = input("input file path: ")
