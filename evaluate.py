@@ -1,15 +1,18 @@
 import json
-from table_class import LineScore, PitcherBoxscore
+from table_class import LineScore, PitcherBoxscore,BatterBoxscore
 
 def get_table_class():
     option = input("select evaluation option:\n"
                    "1. line score\n"
-                   "2. pitchers boxscore\n")
+                   "2. pitchers boxscore\n"
+                   "3. batters boxscore\n")
     
     if option == "1":
         return LineScore
     elif option == "2":
         return PitcherBoxscore
+    elif option == "3":
+        return BatterBoxscore
     else:
         print("please select valid option")
         return get_table_class()
