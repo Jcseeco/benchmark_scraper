@@ -22,6 +22,7 @@ def evaluate_file(filepath):
     
     rmse_list = []
     acc_list = []
+    full_acc = 0
     with open(filepath,"r") as file:
         data = json.load(file)
         
@@ -33,15 +34,18 @@ def evaluate_file(filepath):
             
             acc = table.eval_acc()
             acc_list.append(acc)
+            if acc == 1:
+                full_acc += 1
             
             print(f"gameID <{game['game_id']}> RMSE: {rmse:.4f}, ACC: {acc:.4f}")
             
     avg_rmse = sum(rmse_list)/len(rmse_list)
     avg_acc = sum(acc_list)/len(acc_list)
+    full_acc_percentage = full_acc / len(acc_list)
     print(f"Evaluated {len(data)} games:")
     print(f"avg rmse: {avg_rmse:.4f}, min: {min(rmse_list):.4f}, max: {max(rmse_list):.4f}")
     print(f"avg accuracy: {avg_acc:.4f}, min: {min(acc_list):.4f}, max: {max(acc_list):.4f}")
-
+    print(f"full accuracy percentage: {full_acc_percentage}")
 
 if __name__ == "__main__":
 
