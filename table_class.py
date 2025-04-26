@@ -30,7 +30,10 @@ class LineScore(TableInterface):
             s (str): the ground table or the output table of a model
         """
         s = s.strip()
-        # TODO remove unwanted output texts
+        # remove unwanted output texts before the table
+        prefix = re.match(r"^(.*?)\|",s,re.DOTALL).group(1)
+        s = s[len(prefix):]
+        
         rest_s = self.parse_innings(s)
         team1, rest_s = self.parse_team(rest_s)
         team1_runs, rest_s = self.parse_runs(rest_s)
@@ -122,6 +125,11 @@ class PitcherBoxscore(TableInterface):
         
     def parse_table(self, s:str)->list[dict[str,int]]:
         s = s.strip()
+        
+        # remove unwanted output texts before the table
+        prefix = re.match(r"^(.*?)\|",s,re.DOTALL).group(1)
+        s = s[len(prefix):]
+        
         s = self.parse_header(s)
         pitcher_stats = self.parse_pitcher_stats(s)
             
