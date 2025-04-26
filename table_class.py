@@ -30,6 +30,7 @@ class LineScore(TableInterface):
             s (str): the ground table or the output table of a model
         """
         s = s.strip()
+        # TODO remove unwanted output texts
         rest_s = self.parse_innings(s)
         team1, rest_s = self.parse_team(rest_s)
         team1_runs, rest_s = self.parse_runs(rest_s)
@@ -175,3 +176,100 @@ class PitcherBoxscore(TableInterface):
                     correct += 1
                     
         return correct/total
+class BatterBoxscore(TableInterface):
+
+    def __init__(self, ground_table: str, output_table: str):
+        super().__init__()
+        self.ground = self.parse_table(ground_table, source="ground")
+        self.output = self.parse_table(output_table, source="output")
+
+    def normalize_name(self, name: str) -> str:
+        """Normalize player name to 'F. LASTNAME' format."""
+        parts = name.strip().split()
+        if len(parts) == 1:
+            return parts[0].upper()
+        else:
+            return f"{parts[0][0].upper()}. {parts[-1].upper()}"
+
+    def remove_header(self, s: str) -> str:
+        header_pattern = (
+            r"\|.*Team.*\|.*Player.*\|.*Pos.*\|.*AB.*\|.*R.*\|.*H.*\|.*RBI.*\|.*HR.*\|.*BB.*\|.*K.*\|.*AVG.*\|.*OBP.*\|.*SLG.*\|\n"
+            r"\|\s*-+\s*\|(?:\s*-+\s*\|)+"
+        )
+        return re.sub(header_pattern, '', s, count=1).strip()
+
+    def parse_table(self, s: str, source: str = "") -> dict[str, list[float]]:
+        s = self.remove_header(s)
+        stats_by_player = {}
+
+        for line in s.splitlines():
+            if not line.strip().startswith('|'):
+                continue
+
+            columns = [col.strip() for col in line.strip('|').split('|') if col.strip()]
+            if len(columns) < 5:
+                # print(f"❌ Skipped (too few columns): {line}")
+                continue
+
+            # Extract player name and numeric stats
+            team_or_abbrev = columns[0]
+            player_name = self.normalize_name(columns[1])
+
+            try:
+                stats = []
+                # Start from columns[3] to get numeric fields after Player and Pos
+                for value in columns[3:]:
+                    try:
+                        stats.append(float(value))
+                    except ValueError:
+                        # skip if value is not a number (e.g., empty Pos or comments)
+                        pass
+
+                if len(stats) < 5:
+                    # print(f"❌ Skipped (too few stats): {line}")
+                    continue
+
+                stats_by_player[player_name] = stats
+            except Exception as e:
+                # print(f"⚠️ Failed parsing stats: {line} ({e})")
+                continue
+
+        # print(f"✅ Parsed {len(stats_by_player)} player rows ({source})")
+        return stats_by_player
+
+    def eval_rmse(self) -> float:
+        sum_squared_error = 0
+        count = 0
+
+        for player in self.ground:
+            if player not in self.output:
+                # print(f"❌ Missing prediction for {player}")
+                continue
+
+            min_len = min(len(self.ground[player]), len(self.output[player]))
+            for i in range(min_len):
+                y = self.ground[player][i]
+                y_bar = self.output[player][i]
+                sum_squared_error += (y - y_bar) ** 2
+                count += 1
+
+        return math.sqrt(sum_squared_error / count) if count > 0 else -1
+
+    def eval_acc(self) -> float:
+        correct = 0
+        total = 0
+
+        for player in self.ground:
+            if player not in self.output:
+                continue
+
+            min_len = min(len(self.ground[player]), len(self.output[player]))
+            for i in range(min_len):
+                y = self.ground[player][i]
+                y_bar = self.output[player][i]
+                if y == y_bar:
+                    correct += 1
+                total += 1
+
+        return correct / total if total > 0 else -1
+
