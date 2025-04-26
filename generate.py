@@ -143,16 +143,32 @@ def generate_batter_box_score(filepath: str):
                     "Use team and player names exactly from the script. Estimate stats if needed, but do not invent players.")
     generate_gemini(filepath, prompt, instructions)
 
+def generate_line_scores_solution(filepath: str):
+    prompt = ("According the following MLB play-by-play script, generate the resoning with the exact sentence from the script for each scored run starting from the first inning, then generate a table with line score from 1 through 9 inning of each team by adding the scores from the reasoning:\n")
+    instructions = ("The header of the final generated table should be in the format of \n "
+                    "| Team | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |\n| - | - | - | - | - | - | - | - | - | - |\n"
+                    "and team names should be identical to that in the play-by-play script. "
+                    "Use the '-' character for innings that were not played because the game ended early"
+                    "Read carefully each sentence and understand which attribute/statistic contribute to score."
+                    "Identify which team is on the offence in each inning")
+    generate_gemini(filepath, prompt, instructions)
+
 if __name__ == "__main__":
 
     filepath = input("input file path: ")
     
     func_code = input("Select generation table: \n"
                       "1. line scores\n"
-                      "2. box scores for pitchers\n")
+                      "2. box scores for pitchers\n"
+                      "3. box scores for batters\n"
+                      "4. line scores solution\n")
     
     if func_code == "1":
         generate_line_scores(filepath)
     elif func_code == "2":
         generate_pitcher_box_score(filepath)
+    elif func_code == "3":
+        generate_batter_box_score(filepath)
+    elif func_code == "4":
+        generate_line_scores_solution(filepath)
     
