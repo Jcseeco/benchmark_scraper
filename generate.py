@@ -59,26 +59,21 @@ def get_model_func()->Callable[[str],str]:
     else:
         return prompt_4o_mini
 
-def append_output(filepath: str, data: str):
-    with open(filepath,"a") as file:
-        json.dump(data,file)
-        file.write("\n")
-
-def merge_temp_output(origin_path: str, temp_path: str, out_path: str, delete_temp:bool = True):
-    with open(temp_path,"r") as file:
-        outputs = file.readlines()
+def append_output(filepath: str, data: dict):
+    try:
+        with open(filepath, "r") as file:
+            new_data = json.load(file)  # Load existing content
+            if isinstance(new_data, list):
+                new_data.append(data)  # Append to list
+            else:
+                new_data = [new_data, data]  # Convert to list if not already
     
-    # copy output to game object
-    with open(origin_path,"r") as origin_file:
-        games = json.load(origin_file)
-        for i in range(len(games)):
-            games[i]["output"] = outputs[i]
+    except (json.JSONDecodeError,FileNotFoundError):
+        # If the file is empty, invalid, or doesn't exist, start with a new list
+        new_data = data
         
-    with open(out_path, "w") as file:
-        json.dump(games, file, indent=4)
-        
-    if delete_temp:
-        os.remove(temp_path)
+    with open(filepath, "w") as file:
+        json.dump(new_data,file,indent=4)   
 
 def generate_gemini(in_file_path, prompt, instructions, start_id:str = ""):
     path_with_output = os.path.splitext(in_file_path)[0] + "_output.json"
@@ -104,18 +99,14 @@ def generate_gemini(in_file_path, prompt, instructions, start_id:str = ""):
         try:
             output = prompt_gemini(input_text,instructions)
             game["output"] = output
-        # write current progress to file if error
+        
+            append_output(path_with_output, game)    
         except Exception as e:
             print(f"Error while generating, {e}")
-            with open(path_with_output, "w") as out_file:
-                json.dump(games,out_file,indent=4)
-                
+            
             break
         
         time.sleep(4.5)   # limit request rate to meet free quota
-            
-    with open(path_with_output, "w") as out_file:
-        json.dump(games,out_file,indent=4)
 
 def generate_line_scores(filepath:str):    
     prompt = "Generate a table with line score from 1 through 9 inning of each team according to the following MLB play-by-play script:\n"

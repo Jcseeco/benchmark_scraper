@@ -47,7 +47,7 @@ def append_json(file_name:str, data:list):
             if isinstance(new_data, list):
                 new_data.extend(data)  # Append to list
             else:
-                new_data = [new_data, data]  # Convert to list if not already
+                new_data = [new_data].extend(data)  # Convert to list if not already
     
     except (json.JSONDecodeError,FileNotFoundError):
         # If the file is empty, invalid, or doesn't exist, start with a new list
@@ -141,20 +141,19 @@ def mlb_play_n_score():
     driver = webdriver.Chrome(service=service,options=options)
     
     # scrape data
-    new_data = []
     for game_id in game_ids:
         transcript = MLB_play_by_play(driver, game_id)
         line_score = mlb_line_score(driver,game_id)
-        new_data.append({
+        
+        # write to output file
+        append_json(out_file,[{
             "game_id": game_id,
             "input": transcript,
             "ground": line_score
-        })
+        }])
     
-    driver.close()
+    driver.quit()
     
-    # write to output file
-    append_json(out_file,new_data)
 
 def mlb_pitcher_box(driver: WebDriver, game_id, load_url: bool = False) -> str:
     print(f"extracting pitcher boxscore: {game_id}")
@@ -209,30 +208,121 @@ def mlb_play_pitcher_box():
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service,options=options)
     
-    new_data = []
     for game_id in game_ids:
         transcript = MLB_play_by_play(driver, game_id)
         boxscore = mlb_pitcher_box(driver,game_id,True)
-        new_data.append({
+        
+        # write to output file
+        append_json(out_file,{
             "game_id": game_id,
             "input": transcript,
             "ground": boxscore
         })
     
-    driver.close()
+    driver.quit()
     
-    # write to output file
-    append_json(out_file,new_data)
+    
+def mlb_batter_box(driver: WebDriver, game_id: str, load_url: bool = False) -> str:
+    print(f"Extracting batter boxscore: {game_id}")
+    url = f"https://www.espn.com/mlb/boxscore/_/gameId/{game_id}"
+
+    if load_url:
+        driver.get(url)
+
+    # Wait until batter name elements load
+    wait_el_text(driver, By.CSS_SELECTOR, ".Boxscore__Athlete_Name")
+
+    # Find all teams with batting sections
+    team_sections = driver.find_elements(By.CSS_SELECTOR, ".Boxscore__Team")
+
+    md_table = "| Team | Player | Pos | AB | R | H | RBI | HR | BB | K | AVG | OBP | SLG |\n"
+    md_table += "| - | - | - | - | - | - | - | - | - | - | - | - | - |\n"
+
+    for team_section in team_sections:
+        try:
+            team_name = team_section.find_element(By.CSS_SELECTOR, ".TeamTitle__Name").text.replace(" Hitting", "").strip()
+        except:
+            team_name = "Unknown"
+
+        # Get player rows
+        player_rows = team_section.find_elements(By.CSS_SELECTOR, ".Boxscore__Athlete_Name")
+        position_tags = team_section.find_elements(By.CSS_SELECTOR, ".Boxscore__Athlete_Position")
+        stat_table = team_section.find_elements(By.CSS_SELECTOR, ".Table__Scroller")[0]
+        stat_rows = stat_table.find_elements(By.CSS_SELECTOR, "tbody tr:not(.Boxscore__Totals)")
+
+        for i in range(len(player_rows)):
+            player_name = player_rows[i].text.strip()
+            position = position_tags[i].text.strip() if i < len(position_tags) else "?"
+
+            stat_tds = stat_rows[i].find_elements(By.CSS_SELECTOR, "td")
+            if len(stat_tds) < 10:
+                continue  # Skip rows with incomplete data
+
+            ab = stat_tds[0].text
+            r = stat_tds[1].text
+            h = stat_tds[2].text
+            rbi = stat_tds[3].text
+            hr = stat_tds[4].text
+            bb = stat_tds[5].text
+            k = stat_tds[6].text
+            avg = stat_tds[7].text
+            obp = stat_tds[8].text
+            slg = stat_tds[9].text
+
+            md_table += f"| {team_name} | {player_name} | {position} | {ab} | {r} | {h} | {rbi} | {hr} | {bb} | {k} | {avg} | {obp} | {slg} |\n"
+
+    return md_table
+
+def mlb_play_batter_box():
+    print(f"make sure gameIds is at `{path.join(GAMEID_FILE)}`")
+    out_file = input("Press enter for a new output file name or type in the output file to append to: ")
+    if not out_file:
+        out_file = "mlb_play_batter_box_" + datetime.datetime.now().strftime("%H%M%S") + ".json"
+
+    # Read game IDs
+    df = pd.read_csv(GAMEID_FILE, dtype={"gameIds": "str"})
+    game_ids = df["gameIds"].tolist()
+    print(f"Extracting from {len(game_ids)} MLB games.")
+
+    # Ensure output directory exists
+    makedirs(OUTPUT_DIR, exist_ok=True)
+
+    # Set up Selenium WebDriver
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless")
+    options.add_argument("window-size=1920,1080")
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
+
+    # Extract data
+    for game_id in game_ids:
+        try:
+            transcript = MLB_play_by_play(driver, game_id)
+            batter_box = mlb_batter_box(driver, game_id, True)
+            
+            # Write output
+            append_json(out_file, [{
+                "game_id": game_id,
+                "input": transcript,
+                "ground": batter_box
+            }])
+        except Exception as e:
+            print(f"⚠️ Error processing game {game_id}: {e}")
+
+    driver.quit()
 
 if __name__ == "__main__":
 
     func_code = input("select func:\n"
           "1. MLB play-by-play and linescore\n"
-          "2. MLB play-by-play and pitchers boxscore\n")
+          "2. MLB play-by-play and pitchers boxscore\n"
+          "3. MLB play-by-play and batters boxscore\n")
     
     if func_code == "1":
         mlb_play_n_score()
     elif func_code == "2":
         mlb_play_pitcher_box()
+    elif func_code == '3':
+        mlb_play_batter_box()
     
     
