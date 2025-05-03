@@ -87,11 +87,14 @@ def generate_gemini(in_file_path, prompt, instructions, start_id:str = ""):
     else:
         starts = False
         
-    for game in games:
+    i = 0
+    while i < len(games):
+        game = games[i]
         # skip until given game id to generate
         if game['game_id'] == start_id:
             starts = True
         if not starts:
+            i+=1
             continue
         
         print(f"generating for game: {game['game_id']}")
@@ -103,9 +106,10 @@ def generate_gemini(in_file_path, prompt, instructions, start_id:str = ""):
             append_output(path_with_output, game)    
         except Exception as e:
             print(f"Error while generating, {e}")
-            
-            break
+            i-=1    # retry
+            time.sleep(10)
         
+        i+=1
         time.sleep(4.5)   # limit request rate to meet free quota
 
 def generate_line_scores(filepath:str):    
@@ -156,6 +160,33 @@ where cell values are "runs[top or bottom][inning]"."""
     
     generate_gemini(filepath, prompt, instructions)
 
+def generate_pitcher_box_solution(filepath: str):
+    prompt = """According to the following MLB play-by-play script, provide the reasoning by following the steps, then generate a table of pitcher's box score on both teams from the reasoning.
+
+Reasoning:
+Process sentence by sentence:
+1. inning = 1 top
+2. current pitcher = the pitcher in "<Pitcher> PITCHING FOR <TEAM>."
+3. current defending team = the TEAM "<Pitcher> PITCHING FOR <TEAM>."
+4. if sentence is "<Pitcher> PITCHING FOR <TEAM>." and TEAM is not equal to current defending team, then change inning, and make current offensing team = current defending team, current defending team  = TEAM.
+5. multiple pitchers can pitch for the same team in the same inning.
+6. IP = number of outs / 3 + 0.{number of outs % 3}
+7. H = number of hits against the current pitcher
+8. R = number of scored run against the current pitcher
+9. BB = number of walks the current pitcher gave up
+10. K = number of strikeouts the current pitcher got.
+11. HR = number of homeruns against the current pitcher.
+12. list all innings, the pitchers who pitched in that inning, and the accumulated value of each attribute for those pitchers.
+
+Play-by-play:
+"""
+    instructions = """The header of the final generated table should be in the format of
+| Pitcher | IP | H | R | BB | K | HR |
+ | - | - | - | - | - | - | - |
+where pitchers' names should be exactly as it was mentioned in the input."""
+    
+    generate_gemini(filepath, prompt, instructions,"401568928")
+
 if __name__ == "__main__":
 
     filepath = input("input file path: ")
@@ -164,7 +195,8 @@ if __name__ == "__main__":
                       "1. line scores\n"
                       "2. box scores for pitchers\n"
                       "3. box scores for batters\n"
-                      "4. line scores solution\n")
+                      "4. line scores solution\n"
+                      "5. pitcher box scores solution\n")
     
     if func_code == "1":
         generate_line_scores(filepath)
@@ -174,4 +206,6 @@ if __name__ == "__main__":
         generate_batter_box_score(filepath)
     elif func_code == "4":
         generate_line_scores_solution(filepath)
+    elif func_code == "5":
+        generate_pitcher_box_solution(filepath)
     
